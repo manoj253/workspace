@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'File Processing Infrastructure'
+
+Parameters:
+  DbSecretName:
+    Type: String
+    Description: Name of the secret containing database credentials
+    Default: your-secret-name
+
+Resources:
+  EventBusStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./eventbridge.yaml
+      Parameters:
+        PostProcessorFunctionArn: !GetAtt PostProcessorStack.Outputs.PostProcessorFunctionArn
+
+  FileProcessorStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./file-processor.yaml
+      Parameters:
+        DbSecretName: !Ref DbSecretName
+        EventBusName: !GetAtt EventBusStack.Outputs.EventBusName
+
+  PostProcessorStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./post-processor.yaml
+      Parameters:
+        DbSecretName: !Ref DbSecretName 

@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EventBridge Infrastructure'
+
+Parameters:
+  PostProcessorFunctionArn:
+    Type: String
+    Description: ARN of the Post Processor Lambda function
+
+Resources:
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: file-processing-bus
+
+  FileProcessingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: file-processing-completion-rule
+      Description: Triggers post-processing Lambda when file processing completes
+      EventBusName: !Ref EventBus
+      EventPattern:
+        source:
+          - custom.fileProcessor
+        detail-type:
+          - FileProcessingComplete
+        detail:
+          status:
+            - SUCCESS
+      State: ENABLED
+      Targets:
+        - Arn: !Ref PostProcessorFunctionArn
+          Id: PostProcessorTarget
+
+  EventBridgeInvokeLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgeInvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Ref PostProcessorFunctionArn
+
+Outputs:
+  EventBusName:
+    Description: Name of the Event Bus
+    Value: !Ref EventBus
+  EventBusArn:
+    Description: ARN of the Event Bus
+    Value: !GetAtt EventBus.Arn 

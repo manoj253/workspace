@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'File Processor Lambda Stack'
+
+Parameters:
+  DbSecretName:
+    Type: String
+    Description: Name of the secret containing database credentials
+  EventBusName:
+    Type: String
+    Description: Name of the EventBridge bus
+
+Resources:
+  FileProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../file-processor/src
+      Handler: index.handler
+      Runtime: nodejs14.x
+      Timeout: 900
+      MemorySize: 256
+      Environment:
+        Variables:
+          DB_SECRET_NAME: !Ref DbSecretName
+          EVENT_BUS_NAME: !Ref EventBusName
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${DbSecretName}-*'
+        - S3CrudPolicy:
+            BucketName: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${EventBusName}'
+
+Outputs:
+  FileProcessorFunctionArn:
+    Description: ARN of the File Processor Lambda
+    Value: !GetAtt FileProcessorFunction.Arn 
